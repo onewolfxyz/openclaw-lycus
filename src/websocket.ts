@@ -187,16 +187,23 @@ export class ClawChannelWebSocketSession {
       throw new Error("Action Cable subscription was rejected");
     }
 
-    const message = readMessagePayload(frame);
-    if (message) {
+    const payload = readMessagePayload(frame);
+    if (payload.message) {
       this.options.log?.info?.(
-        `${CHANNEL_LABEL}: received event eventId=${message.eventId ?? "missing"} messageId=${
-          message.messageId ?? message.id ?? "missing"
-        } conversation=${message.conversationId ?? "missing"} text="${previewText(
-          message.text ?? message.body,
+        `${CHANNEL_LABEL}: received event eventId=${payload.message.eventId ?? "missing"} messageId=${
+          payload.message.messageId ?? payload.message.id ?? "missing"
+        } conversation=${payload.message.conversationId ?? "missing"} text="${previewText(
+          payload.message.text ?? payload.message.body,
         )}"`,
       );
-      this.enqueueEvent(message);
+      this.enqueueEvent(payload.message);
+      return;
+    }
+
+    if (payload.reason) {
+      this.options.log?.debug?.(
+        `${CHANNEL_LABEL}: ignored Action Cable payload reason=${payload.reason}`,
+      );
       return;
     }
 
@@ -318,17 +325,37 @@ function buildCableUrl(socketUrl: string, machineId?: string): URL {
   return url;
 }
 
-function readMessagePayload(frame: Record<string, unknown>): ClawChannelBackendMessage | null {
+function readMessagePayload(frame: Record<string, unknown>): {
+  message: ClawChannelBackendMessage | null;
+  reason?: string;
+} {
   const wrapped = frame.message;
   if (wrapped && typeof wrapped === "object") {
-    return wrapped as ClawChannelBackendMessage;
+    return validateMessagePayload(wrapped as Record<string, unknown>);
   }
 
   if (frame.type === "message" && typeof frame.eventId === "string") {
-    return frame as ClawChannelBackendMessage;
+    return validateMessagePayload(frame);
   }
 
-  return null;
+  return { message: null };
+}
+
+function validateMessagePayload(payload: Record<string, unknown>): {
+  message: ClawChannelBackendMessage | null;
+  reason?: string;
+} {
+  if (payload.type !== "message") {
+    return { message: null, reason: `type_${String(payload.type ?? "missing")}` };
+  }
+
+  for (const key of ["eventId", "messageId", "conversationId", "text"]) {
+    if (typeof payload[key] !== "string" || payload[key].trim() === "") {
+      return { message: null, reason: `missing_${key}` };
+    }
+  }
+
+  return { message: payload as ClawChannelBackendMessage };
 }
 
 function readString(frame: Record<string, unknown>, key: string): string | undefined {
