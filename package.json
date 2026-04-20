@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-lycus",
+  "name": "@onewolfxyz/openclaw-lycus",
   "version": "0.1.0",
   "description": "OpenClaw channel plugin that pairs a machine token with Lycus.",
   "type": "module",
@@ -27,6 +27,17 @@
     "lycus"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onewolfxyz/openclaw-lycus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/onewolfxyz/openclaw-lycus/issues"
+  },
+  "homepage": "https://github.com/onewolfxyz/openclaw-lycus#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "openclaw": {
     "extensions": [
       "./index.ts"

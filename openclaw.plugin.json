@@ -17,6 +17,113 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
-    "properties": {}
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "websocket",
+          "webhook"
+        ],
+        "default": "websocket"
+      },
+      "baseUrl": {
+        "type": "string",
+        "format": "uri",
+        "default": "https://app.lycus.ai"
+      },
+      "socketUrl": {
+        "type": "string",
+        "format": "uri",
+        "default": "wss://app.lycus.ai/cable"
+      },
+      "machineToken": {
+        "type": "string",
+        "description": "Pairing token created by Lycus. Store as a secret."
+      },
+      "machineId": {
+        "type": "string",
+        "description": "Machine id suggested by Lycus during pairing."
+      },
+      "machineName": {
+        "type": "string",
+        "description": "Human-readable machine name shown in Lycus."
+      },
+      "assistantName": {
+        "type": "string",
+        "default": "Lycus Assistant"
+      },
+      "assistantEmoji": {
+        "type": "string"
+      },
+      "assistantAvatarUrl": {
+        "type": "string",
+        "format": "uri"
+      },
+      "dmPolicy": {
+        "type": "string",
+        "enum": [
+          "pairing",
+          "allowlist",
+          "open",
+          "disabled"
+        ],
+        "default": "open"
+      },
+      "allowFrom": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "*"
+        ]
+      },
+      "pairOnStart": {
+        "type": "boolean",
+        "default": true
+      },
+      "blockStreaming": {
+        "type": "boolean",
+        "default": true
+      },
+      "api": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pairPath": {
+            "type": "string",
+            "default": "/api/openclaw/channel/pair"
+          },
+          "messagesPath": {
+            "type": "string",
+            "default": "/api/openclaw/channel/messages"
+          },
+          "indicatorsPath": {
+            "type": "string",
+            "default": "/api/openclaw/channel/indicators"
+          },
+          "ackPath": {
+            "type": "string",
+            "default": "/api/openclaw/channel/events/ack"
+          },
+          "pullPath": {
+            "type": "string",
+            "default": "/api/openclaw/channel/events/pull"
+          },
+          "healthPath": {
+            "type": "string",
+            "default": "/health"
+          }
+        }
+      }
+    },
+    "required": [
+      "machineToken",
+      "machineId"
+    ]
   }
 }
