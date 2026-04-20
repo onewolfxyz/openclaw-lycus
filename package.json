@@ -1,0 +1,65 @@
+{
+  "name": "openclaw-claw-channel",
+  "version": "0.1.0",
+  "description": "OpenClaw channel plugin that pairs a machine token with the Claw Channel backend.",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "files": [
+    "index.ts",
+    "setup-entry.ts",
+    "api.ts",
+    "openclaw.plugin.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "openclaw-channel",
+    "channel"
+  ],
+  "license": "MIT",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2",
+      "minGatewayVersion": "2026.3.24-beta.2"
+    },
+    "build": {
+      "openclawVersion": "2026.3.24-beta.2",
+      "pluginSdkVersion": "2026.3.24-beta.2"
+    },
+    "channel": {
+      "id": "claw-channel",
+      "label": "Claw Channel",
+      "selectionLabel": "Claw Channel",
+      "detailLabel": "Claw Channel Backend",
+      "blurb": "Connect OpenClaw to the Claw Channel backend through a paired machine token.",
+      "aliases": [
+        "claw",
+        "clawchannel"
+      ],
+      "markdownCapable": true,
+      "quickstartAllowFrom": true,
+      "showConfigured": true
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.24-beta.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}

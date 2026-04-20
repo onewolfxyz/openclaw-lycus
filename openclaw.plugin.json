@@ -1,0 +1,21 @@
+{
+  "id": "claw-channel",
+  "name": "Claw Channel",
+  "version": "0.1.0",
+  "description": "OpenClaw channel plugin for the Claw Channel backend.",
+  "kind": "channel",
+  "channels": [
+    "claw-channel"
+  ],
+  "channelEnvVars": [
+    "CLAW_CHANNEL_BASE_URL",
+    "CLAW_CHANNEL_MACHINE_TOKEN",
+    "CLAW_CHANNEL_MACHINE_ID",
+    "CLAW_CHANNEL_WEBHOOK_SECRET"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
