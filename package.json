@@ -1,7 +1,7 @@
 {
   "name": "@onewolfxyz/openclaw-lycus",
   "version": "0.1.0",
-  "description": "OpenClaw channel plugin that pairs a machine token with Lycus.",
+  "description": "Lycus is the business layer for OpenClaw, connecting devices to a centralized dashboard for team access, activity visibility, scheduled work, and organizational outcomes.",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -55,8 +55,8 @@
       "id": "lycus",
       "label": "Lycus",
       "selectionLabel": "Lycus",
-      "detailLabel": "Lycus Backend",
-      "blurb": "Connect OpenClaw to Lycus through a paired machine token.",
+      "detailLabel": "Lycus Dashboard",
+      "blurb": "Connect this OpenClaw device to Lycus so teams can manage agents, activity, scheduled work, and outcomes from one centralized dashboard.",
       "aliases": [
         "lycus",
         "lycusai"

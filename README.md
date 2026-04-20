@@ -1,14 +1,14 @@
 # Lycus OpenClaw Plugin
 
-This package is a native OpenClaw channel plugin for the Lycus Rails backend.
+This package is a native OpenClaw channel plugin for [Lycus](https://lycus.ai).
 
-Bold idea: customer machines should never need public inbound URLs.
+Bold idea: Lycus is the business layer for OpenClaw.
 
-Clear articulation: the plugin runs inside the local OpenClaw Gateway, pairs with Rails using a machine token, opens an outbound Action Cable WebSocket to Rails, receives durable queued events over that socket, dispatches them into OpenClaw, ACKs processed events, and posts assistant replies back to Rails over HTTP.
+Clear articulation: Lycus lets organizations manage multiple OpenClaw installations from one centralized dashboard. Teams can pair OpenClaw devices, share access across authorized team members, inspect structured activity, coordinate scheduled work, and track outcomes across the agents running on company machines.
 
-Real-world example: a browser user sends a message in your Rails chat UI. Rails stores an `openclaw_channel_events` row, broadcasts that event to the paired machine over `/cable`, the plugin runs the OpenClaw agent locally, and Rails receives the assistant reply at `/api/openclaw/channel/messages`.
+Real-world example: a team member sends a request from the Lycus dashboard. Lycus stores the durable event, delivers it to the paired OpenClaw device over an outbound WebSocket, the plugin dispatches the work into the local OpenClaw Gateway, and Lycus receives replies, progress, and final outcomes back into the dashboard.
 
-Confident close: Rails owns durable state; Action Cable is only the delivery pipe.
+Confident close: Lycus gives organizations one operational layer for agents running across many OpenClaw devices.
 
 ## Prerequisites
 
@@ -89,16 +89,16 @@ Lycus: pulling replay events afterCursor=null
 After publishing to npm:
 
 ```bash
-openclaw plugins install openclaw-lycus
+openclaw plugins install @onewolfxyz/openclaw-lycus
 openclaw plugins enable lycus
 openclaw gateway restart
 openclaw lycus pair
 ```
 
-If published under an npm scope:
+If installing from ClawHub:
 
 ```bash
-openclaw plugins install @your-org/openclaw-lycus
+openclaw plugins install clawhub:@onewolfxyz/openclaw-lycus
 openclaw plugins enable lycus
 openclaw gateway restart
 openclaw lycus pair
