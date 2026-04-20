@@ -171,6 +171,7 @@ async function dispatchMessage(
   api.logger.info(
     `${CHANNEL_ID}: handing message to OpenClaw runtime messageId=${message.messageId} conversation=${message.conversationId}`,
   );
+  await sendStatusIndicator(api, account, message, "working", "Lycus is working...");
 
   await replyRuntime.dispatchReplyWithBufferedBlockDispatcher({
     ctx,
@@ -190,6 +191,7 @@ async function dispatchMessage(
         await sendBackendMessage(account, {
           accountId: account.accountId,
           machineId: account.machineId,
+          assistant: account.assistant,
           conversationId: message.conversationId,
           text,
           threadId: message.threadId,
@@ -198,6 +200,14 @@ async function dispatchMessage(
           kind: info.kind,
           payload,
         });
+        await sendStatusIndicator(
+          api,
+          account,
+          message,
+          isPartialReply(info.kind) ? "partial_reply" : "final_reply",
+          text,
+          { replyId, kind: info.kind ?? "final", payload },
+        );
         api.logger.info(`${CHANNEL_ID}: assistant reply sent replyId=${replyId}`);
       },
       onError: async (error: unknown) => {
@@ -209,8 +219,10 @@ async function dispatchMessage(
         await sendBackendIndicator(account, {
           accountId: account.accountId,
           machineId: account.machineId,
+          assistant: account.assistant,
           conversationId: message.conversationId,
           type: "error",
+          messageId: message.messageId,
           text: errorMessage(error),
           threadId: message.threadId,
         });
@@ -223,8 +235,10 @@ async function dispatchMessage(
           await sendBackendIndicator(account, {
             accountId: account.accountId,
             machineId: account.machineId,
+            assistant: account.assistant,
             conversationId: message.conversationId,
             type: "typing",
+            messageId: message.messageId,
             threadId: message.threadId,
           });
         },
@@ -235,10 +249,40 @@ async function dispatchMessage(
           await sendBackendIndicator(account, {
             accountId: account.accountId,
             machineId: account.machineId,
+            assistant: account.assistant,
             conversationId: message.conversationId,
             type: "typing_stopped",
+            messageId: message.messageId,
             threadId: message.threadId,
           });
+        },
+      },
+      toolCallbacks: {
+        start: async (tool: unknown) => {
+          await sendStatusIndicator(
+            api,
+            account,
+            message,
+            "tool_start",
+            toolLabel(tool, "Starting tool"),
+            {
+              toolName: toolName(tool),
+              payload: tool,
+            },
+          );
+        },
+        finish: async (tool: unknown) => {
+          await sendStatusIndicator(
+            api,
+            account,
+            message,
+            "tool_finish",
+            toolLabel(tool, "Finished tool"),
+            {
+              toolName: toolName(tool),
+              payload: tool,
+            },
+          );
         },
       },
     },
@@ -249,6 +293,46 @@ async function dispatchMessage(
   api.logger.info(
     `${CHANNEL_ID}: OpenClaw runtime completed messageId=${message.messageId} conversation=${message.conversationId}`,
   );
+}
+
+async function sendStatusIndicator(
+  api: RuntimeApi,
+  account: ClawChannelAccount,
+  message: RequiredNormalizedMessage,
+  type:
+    | "working"
+    | "tool_start"
+    | "tool_finish"
+    | "partial_reply"
+    | "final_reply"
+    | "error",
+  text?: string,
+  extra: {
+    replyId?: string;
+    kind?: string;
+    toolName?: string;
+    payload?: unknown;
+  } = {},
+) {
+  api.logger.info(
+    `${CHANNEL_ID}: sending ${type} indicator conversation=${message.conversationId}${
+      extra.toolName ? ` tool=${extra.toolName}` : ""
+    }`,
+  );
+  await sendBackendIndicator(account, {
+    accountId: account.accountId,
+    machineId: account.machineId,
+    assistant: account.assistant,
+    conversationId: message.conversationId,
+    type,
+    messageId: message.messageId,
+    replyId: extra.replyId,
+    threadId: message.threadId,
+    text,
+    toolName: extra.toolName,
+    stage: extra.kind,
+    payload: extra.payload,
+  });
 }
 
 type RequiredNormalizedMessage = {
@@ -315,6 +399,31 @@ function buildReplyId(
   ].join("|");
 
   return `rep_${createHash("sha256").update(stable).digest("hex").slice(0, 32)}`;
+}
+
+function isPartialReply(kind: string | undefined): boolean {
+  const normalized = kind?.toLowerCase() ?? "";
+  return (
+    normalized.includes("partial") ||
+    normalized.includes("preview") ||
+    normalized.includes("block") ||
+    normalized.includes("chunk")
+  );
+}
+
+function toolName(tool: unknown): string | undefined {
+  if (!tool || typeof tool !== "object") return undefined;
+  const record = tool as Record<string, unknown>;
+  for (const key of ["name", "toolName", "id", "tool"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function toolLabel(tool: unknown, fallback: string): string {
+  const name = toolName(tool);
+  return name ? `${fallback}: ${name}` : fallback;
 }
 
 function isIndicatorEvent(

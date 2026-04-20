@@ -7,11 +7,11 @@ import {
   resolveClawChannelAccount,
 } from "./config.js";
 
-describe("claw-channel config", () => {
+describe("lycus config", () => {
   it("resolves a top-level default account", () => {
     const cfg = {
       channels: {
-        "claw-channel": {
+        "lycus": {
           baseUrl: "https://backend.example.com/",
           machineToken: "machine-token",
           machineId: "machine-default",
@@ -35,7 +35,7 @@ describe("claw-channel config", () => {
   it("resolves named accounts over top-level defaults", () => {
     const cfg = {
       channels: {
-        "claw-channel": {
+        "lycus": {
           baseUrl: "https://backend.example.com",
           machineToken: "top-token",
           machineId: "top-machine",
@@ -60,7 +60,7 @@ describe("claw-channel config", () => {
   it("lists named accounts when configured", () => {
     const cfg = {
       channels: {
-        "claw-channel": {
+        "lycus": {
           accounts: {
             one: {},
             two: {},

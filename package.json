@@ -1,7 +1,7 @@
 {
-  "name": "openclaw-claw-channel",
+  "name": "openclaw-lycus",
   "version": "0.1.0",
-  "description": "OpenClaw channel plugin that pairs a machine token with the Claw Channel backend.",
+  "description": "OpenClaw channel plugin that pairs a machine token with Lycus.",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -23,7 +23,8 @@
     "openclaw",
     "openclaw-plugin",
     "openclaw-channel",
-    "channel"
+    "channel",
+    "lycus"
   ],
   "license": "MIT",
   "openclaw": {
@@ -40,14 +41,14 @@
       "pluginSdkVersion": "2026.3.24-beta.2"
     },
     "channel": {
-      "id": "claw-channel",
-      "label": "Claw Channel",
-      "selectionLabel": "Claw Channel",
-      "detailLabel": "Claw Channel Backend",
-      "blurb": "Connect OpenClaw to the Claw Channel backend through a paired machine token.",
+      "id": "lycus",
+      "label": "Lycus",
+      "selectionLabel": "Lycus",
+      "detailLabel": "Lycus Backend",
+      "blurb": "Connect OpenClaw to Lycus through a paired machine token.",
       "aliases": [
-        "claw",
-        "clawchannel"
+        "lycus",
+        "lycusai"
       ],
       "markdownCapable": true,
       "quickstartAllowFrom": true,

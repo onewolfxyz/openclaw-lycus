@@ -1,6 +1,6 @@
-# Claw Channel OpenClaw Plugin
+# Lycus OpenClaw Plugin
 
-This package is a native OpenClaw channel plugin for the Claw Management Rails backend.
+This package is a native OpenClaw channel plugin for the Lycus Rails backend.
 
 Bold idea: customer machines should never need public inbound URLs.
 
@@ -30,13 +30,13 @@ node --version
 The current development install uses a local path plugin. In these examples, the plugin lives at:
 
 ```text
-/Users/eng1/Documents/ClawChannelPlugin
+/Users/eng1/Documents/openclaw-lycus
 ```
 
 Install dependencies:
 
 ```bash
-cd /Users/eng1/Documents/ClawChannelPlugin
+cd /Users/eng1/Documents/openclaw-lycus
 npm install --legacy-peer-deps
 npm run typecheck
 npm test
@@ -45,15 +45,15 @@ npm test
 Install the plugin into OpenClaw from the local path:
 
 ```bash
-openclaw plugins install -l /Users/eng1/Documents/ClawChannelPlugin
-openclaw plugins enable claw-channel
+openclaw plugins install -l /Users/eng1/Documents/openclaw-lycus
+openclaw plugins enable lycus
 ```
 
 Confirm OpenClaw sees it:
 
 ```bash
 openclaw plugins list
-openclaw plugins inspect claw-channel
+openclaw plugins inspect lycus
 ```
 
 Restart the Gateway so the plugin is loaded:
@@ -65,7 +65,7 @@ openclaw gateway restart
 Pair the machine:
 
 ```bash
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 Watch logs:
@@ -77,11 +77,11 @@ openclaw logs --follow --local-time
 Expected startup flow:
 
 ```text
-Claw Channel: paired machine account=default machine=...
-Claw Channel: connecting WebSocket https://.../cable
-Claw Channel: WebSocket opened machine=...
-Claw Channel: Action Cable subscription confirmed channel=OpenclawMachineChannel
-Claw Channel: pulling replay events afterCursor=null
+Lycus: paired machine account=default machine=...
+Lycus: connecting WebSocket https://.../cable
+Lycus: WebSocket opened machine=...
+Lycus: Action Cable subscription confirmed channel=OpenclawMachineChannel
+Lycus: pulling replay events afterCursor=null
 ```
 
 ## Published Install
@@ -89,19 +89,19 @@ Claw Channel: pulling replay events afterCursor=null
 After publishing to npm:
 
 ```bash
-openclaw plugins install openclaw-claw-channel
-openclaw plugins enable claw-channel
+openclaw plugins install openclaw-lycus
+openclaw plugins enable lycus
 openclaw gateway restart
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 If published under an npm scope:
 
 ```bash
-openclaw plugins install @your-org/openclaw-claw-channel
-openclaw plugins enable claw-channel
+openclaw plugins install @your-org/openclaw-lycus
+openclaw plugins enable lycus
 openclaw gateway restart
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 ## Configuration
@@ -111,14 +111,15 @@ Use Raw config mode if OpenClaw's form renderer reports an unsupported type.
 ```jsonc
 {
   "channels": {
-    "claw-channel": {
+    "lycus": {
       "enabled": true,
       "mode": "websocket",
-      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
-      "socketUrl": "wss://unmercerized-biramous-larry.ngrok-free.dev/cable",
+      "baseUrl": "https://app.lycus.ai",
+      "socketUrl": "wss://app.lycus.ai/cable",
       "machineToken": "machine-token-from-rails-pairing-ticket",
       "machineId": "suggested-machine-id-from-rails",
       "machineName": "Engineering 2",
+      "assistantName": "Lycus Assistant",
       "pairOnStart": true,
       "dmPolicy": "open",
       "allowFrom": ["*"]
@@ -132,14 +133,17 @@ Example full `channels` block for the current staging backend:
 ```jsonc
 {
   "channels": {
-    "claw-channel": {
+    "lycus": {
       "enabled": true,
       "mode": "websocket",
-      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
-      "socketUrl": "wss://unmercerized-biramous-larry.ngrok-free.dev/cable",
+      "baseUrl": "https://app.lycus.ai",
+      "socketUrl": "wss://app.lycus.ai/cable",
       "machineToken": "token-from-rails",
-      "machineId": "claw-mac-558e",
+      "machineId": "lycus-mac-558e",
       "machineName": "Test Macbook Engineering",
+      "assistantName": "Lycus Assistant",
+      "assistantEmoji": "L",
+      "assistantAvatarUrl": "https://lycus.ai/avatar.png",
       "pairOnStart": true,
       "dmPolicy": "open",
       "allowFrom": ["*"]
@@ -153,8 +157,8 @@ Minimum required fields:
 ```jsonc
 {
   "channels": {
-    "claw-channel": {
-      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
+    "lycus": {
+      "baseUrl": "https://app.lycus.ai",
       "machineToken": "machine-token-from-rails-pairing-ticket",
       "machineId": "suggested-machine-id-from-rails"
     }
@@ -167,10 +171,10 @@ If `socketUrl` is omitted, the plugin derives it from `baseUrl` as `/cable`.
 Environment fallbacks are supported:
 
 ```bash
-CLAW_CHANNEL_BASE_URL=https://unmercerized-biramous-larry.ngrok-free.dev
-CLAW_CHANNEL_SOCKET_URL=wss://unmercerized-biramous-larry.ngrok-free.dev/cable
-CLAW_CHANNEL_MACHINE_TOKEN=machine-token-from-rails-pairing-ticket
-CLAW_CHANNEL_MACHINE_ID=suggested-machine-id-from-rails
+LYCUS_BASE_URL=https://app.lycus.ai
+LYCUS_SOCKET_URL=wss://app.lycus.ai/cable
+LYCUS_MACHINE_TOKEN=machine-token-from-rails-pairing-ticket
+LYCUS_MACHINE_ID=suggested-machine-id-from-rails
 ```
 
 Named accounts are also supported:
@@ -178,8 +182,8 @@ Named accounts are also supported:
 ```jsonc
 {
   "channels": {
-    "claw-channel": {
-      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
+    "lycus": {
+      "baseUrl": "https://app.lycus.ai",
       "accounts": {
         "default": {
           "machineToken": "machine-token-a",
@@ -208,7 +212,7 @@ The user copies the returned `token` into OpenClaw as `machineToken` and the ret
 Pair explicitly:
 
 ```bash
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 Or let the plugin pair on Gateway startup with `pairOnStart: true`.
@@ -217,7 +221,7 @@ Re-pair after changing `machineToken`, `machineId`, `baseUrl`, or `socketUrl`:
 
 ```bash
 openclaw gateway restart
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 The plugin calls:
@@ -225,7 +229,7 @@ The plugin calls:
 ```http
 POST /api/openclaw/channel/pair
 Authorization: Bearer <machineToken>
-X-OpenClaw-Channel: claw-channel
+X-OpenClaw-Channel: lycus
 X-OpenClaw-Account-Id: default
 X-OpenClaw-Machine-Id: <machineId>
 ```
@@ -234,10 +238,13 @@ Request:
 
 ```json
 {
-  "channelId": "claw-channel",
+  "channelId": "lycus",
   "accountId": "default",
-  "machineId": "claw-mac-447f",
+  "machineId": "lycus-mac-447f",
   "machineName": "Engineering 2",
+  "assistant": {
+    "name": "Lycus Assistant"
+  },
   "capabilities": {
     "chatTypes": ["direct", "group"],
     "markdown": true,
@@ -253,8 +260,8 @@ Expected response:
   "ok": true,
   "paired": true,
   "accountId": "default",
-  "machineId": "claw-mac-447f",
-  "socketUrl": "wss://unmercerized-biramous-larry.ngrok-free.dev/cable"
+  "machineId": "lycus-mac-447f",
+  "socketUrl": "wss://app.lycus.ai/cable"
 }
 ```
 
@@ -263,15 +270,15 @@ Expected response:
 After pairing, the plugin opens:
 
 ```text
-wss://unmercerized-biramous-larry.ngrok-free.dev/cable?machine_id=<machineId>
+wss://app.lycus.ai/cable?machine_id=<machineId>
 ```
 
 Headers:
 
 ```http
 Authorization: Bearer <machineToken>
-Origin: https://unmercerized-biramous-larry.ngrok-free.dev
-X-OpenClaw-Channel: claw-channel
+Origin: https://app.lycus.ai
+X-OpenClaw-Channel: lycus
 X-OpenClaw-Account-Id: default
 X-OpenClaw-Machine-Id: <machineId>
 ```
@@ -329,7 +336,10 @@ Body:
 ```json
 {
   "accountId": "default",
-  "machineId": "claw-mac-447f",
+  "machineId": "lycus-mac-447f",
+  "assistant": {
+    "name": "Lycus Assistant"
+  },
   "conversationId": "user_123",
   "text": "Assistant reply",
   "replyToId": "msg_456",
@@ -350,7 +360,28 @@ Types sent by the plugin:
 ```text
 typing
 typing_stopped
+working
+tool_start
+tool_finish
+partial_reply
+final_reply
 error
+```
+
+Example indicator body:
+
+```json
+{
+  "accountId": "default",
+  "machineId": "lycus-mac-447f",
+  "assistant": {
+    "name": "Lycus Assistant"
+  },
+  "conversationId": "user_123",
+  "type": "working",
+  "messageId": "msg_456",
+  "text": "Lycus is working..."
+}
 ```
 
 ### ACK Processed Event
@@ -416,18 +447,20 @@ Response:
 
 - WebSocket mode is the default.
 - `gatewayPublicUrl` is no longer required.
-- `/claw-channel/webhook` is only registered if `mode` is explicitly set to `webhook`.
+- `/lycus/webhook` is only registered if `mode` is explicitly set to `webhook`.
 - The plugin reconnects with exponential backoff up to 30 seconds.
 - On subscription confirm, the plugin pulls replay events from Rails.
 - ACKs are sent over HTTP after OpenClaw processing.
 - Assistant replies include a deterministic `replyId`.
+- Assistant replies and indicators include assistant identity metadata.
+- The default assistant identity is `Lycus Assistant`.
 
 ## Refreshing Or Updating The Local Plugin
 
 When plugin code changes, OpenClaw must reload the plugin. For a local path install, use this flow:
 
 ```bash
-cd /Users/eng1/Documents/ClawChannelPlugin
+cd /Users/eng1/Documents/openclaw-lycus
 git pull
 npm install --legacy-peer-deps
 npm run typecheck
@@ -438,31 +471,31 @@ openclaw gateway restart
 If OpenClaw does not pick up the change after restart, reinstall the local path plugin:
 
 ```bash
-openclaw plugins disable claw-channel
-openclaw plugins install -l /Users/eng1/Documents/ClawChannelPlugin
-openclaw plugins enable claw-channel
+openclaw plugins disable lycus
+openclaw plugins install -l /Users/eng1/Documents/openclaw-lycus
+openclaw plugins enable lycus
 openclaw gateway restart
 ```
 
 Then verify:
 
 ```bash
-openclaw plugins inspect claw-channel
-openclaw claw-channel pair
+openclaw plugins inspect lycus
+openclaw lycus pair
 openclaw logs --follow --local-time
 ```
 
 For a hard refresh during development:
 
 ```bash
-cd /Users/eng1/Documents/ClawChannelPlugin
+cd /Users/eng1/Documents/openclaw-lycus
 rm -rf node_modules
 npm install --legacy-peer-deps
 npm run typecheck
 npm test
-openclaw plugins install -l /Users/eng1/Documents/ClawChannelPlugin
+openclaw plugins install -l /Users/eng1/Documents/openclaw-lycus
 openclaw gateway restart
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 Do not change the Rails pairing token unless you intend to create a new machine pairing.
@@ -479,7 +512,7 @@ openclaw gateway restart
 If the change touches channel identity or backend URLs, pair again:
 
 ```bash
-openclaw claw-channel pair
+openclaw lycus pair
 ```
 
 Use Raw config mode if the OpenClaw Control UI says:
@@ -494,7 +527,7 @@ Check plugin installation:
 
 ```bash
 openclaw plugins list
-openclaw plugins inspect claw-channel
+openclaw plugins inspect lycus
 ```
 
 Check Gateway status:
@@ -512,20 +545,20 @@ openclaw logs --follow --local-time
 Check only this plugin:
 
 ```bash
-openclaw logs --follow --plain --local-time | grep -i "claw"
+openclaw logs --follow --plain --local-time | grep -i "lycus"
 ```
 
 Expected message flow when Rails sends a user message:
 
 ```text
-Claw Channel: received event eventId=...
-Claw Channel: queued event eventId=...
-Claw Channel: dispatching event to OpenClaw eventId=...
-claw-channel: inbound message normalized eventId=...
-claw-channel: handing message to OpenClaw runtime messageId=...
-claw-channel: dispatching assistant reply replyId=...
-claw-channel: assistant reply sent replyId=...
-Claw Channel: acked event eventId=... status=processed
+Lycus: received event eventId=...
+Lycus: queued event eventId=...
+Lycus: dispatching event to OpenClaw eventId=...
+lycus: inbound message normalized eventId=...
+lycus: handing message to OpenClaw runtime messageId=...
+lycus: dispatching assistant reply replyId=...
+lycus: assistant reply sent replyId=...
+Lycus: acked event eventId=... status=processed
 ```
 
 ## Logs
@@ -547,24 +580,24 @@ Default file logs are written under `/tmp/openclaw/openclaw-YYYY-MM-DD.log`.
 The plugin logs these milestones:
 
 ```text
-Claw Channel: paired machine account=default machine=claw-mac-558e
-Claw Channel: connecting WebSocket https://.../cable
-Claw Channel: WebSocket opened machine=claw-mac-558e
-Claw Channel: Action Cable welcome received
-Claw Channel: subscribing to Action Cable channel=OpenclawMachineChannel
-Claw Channel: Action Cable subscription confirmed channel=OpenclawMachineChannel
-Claw Channel: pulling replay events afterCursor=null
-Claw Channel: replay pull returned count=0 cursor=null
-Claw Channel: received event eventId=evt_... messageId=msg_... conversation=... text="..."
-Claw Channel: queued event eventId=evt_... messageId=msg_...
-Claw Channel: dispatching event to OpenClaw eventId=evt_... messageId=msg_...
-claw-channel: inbound message normalized eventId=evt_... messageId=msg_... conversation=... sender=... text="..."
-claw-channel: handing message to OpenClaw runtime messageId=msg_... conversation=...
-claw-channel: dispatching assistant reply replyId=rep_... conversation=... replyTo=msg_... kind=final text="..."
-claw-channel: assistant reply sent replyId=rep_...
-claw-channel: OpenClaw runtime completed messageId=msg_... conversation=...
-Claw Channel: OpenClaw dispatch finished eventId=evt_...
-Claw Channel: acked event eventId=evt_... status=processed
+Lycus: paired machine account=default machine=lycus-mac-558e
+Lycus: connecting WebSocket https://.../cable
+Lycus: WebSocket opened machine=lycus-mac-558e
+Lycus: Action Cable welcome received
+Lycus: subscribing to Action Cable channel=OpenclawMachineChannel
+Lycus: Action Cable subscription confirmed channel=OpenclawMachineChannel
+Lycus: pulling replay events afterCursor=null
+Lycus: replay pull returned count=0 cursor=null
+Lycus: received event eventId=evt_... messageId=msg_... conversation=... text="..."
+Lycus: queued event eventId=evt_... messageId=msg_...
+Lycus: dispatching event to OpenClaw eventId=evt_... messageId=msg_...
+lycus: inbound message normalized eventId=evt_... messageId=msg_... conversation=... sender=... text="..."
+lycus: handing message to OpenClaw runtime messageId=msg_... conversation=...
+lycus: dispatching assistant reply replyId=rep_... conversation=... replyTo=msg_... kind=final text="..."
+lycus: assistant reply sent replyId=rep_...
+lycus: OpenClaw runtime completed messageId=msg_... conversation=...
+Lycus: OpenClaw dispatch finished eventId=evt_...
+Lycus: acked event eventId=evt_... status=processed
 ```
 
 If you do not see the message lifecycle logs, check Rails for:

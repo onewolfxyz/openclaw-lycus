@@ -88,7 +88,7 @@ export class ClawChannelWebSocketSession {
         headers: {
           authorization: `Bearer ${account.machineToken}`,
           origin: account.baseUrl ?? url.origin,
-          "x-openclaw-channel": CHANNEL_ID,
+          "x-openlycus": CHANNEL_ID,
           "x-openclaw-account-id": account.accountId,
           "x-openclaw-machine-id": paired.machineId ?? account.machineId ?? "",
         },

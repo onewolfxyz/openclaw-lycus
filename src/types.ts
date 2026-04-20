@@ -1,6 +1,11 @@
 export type ClawChannelDmPolicy = "pairing" | "allowlist" | "open" | "disabled";
 export type ClawChannelChatType = "direct" | "group";
 export type ClawChannelMode = "websocket" | "webhook";
+export type LycusAssistantIdentity = {
+  name: string;
+  emoji?: string;
+  avatarUrl?: string;
+};
 
 export type ClawChannelApiPaths = {
   pairPath?: string;
@@ -19,6 +24,9 @@ export type ClawChannelAccountConfig = {
   machineToken?: string;
   machineId?: string;
   machineName?: string;
+  assistantName?: string;
+  assistantEmoji?: string;
+  assistantAvatarUrl?: string;
   gatewayPublicUrl?: string;
   inboundPath?: string;
   webhookSecret?: string;
@@ -53,11 +61,14 @@ export type ClawChannelAccount = Required<
     | "machineToken"
     | "machineId"
     | "machineName"
+    | "assistantEmoji"
+    | "assistantAvatarUrl"
     | "gatewayPublicUrl"
     | "webhookSecret"
     | "defaultTo"
   > & {
     accountId: string;
+    assistant: LycusAssistantIdentity;
     api: Required<ClawChannelApiPaths>;
   };
 
@@ -106,6 +117,7 @@ export type ClawChannelInboundEvent =
 export type ClawChannelOutboundMessage = {
   accountId: string;
   machineId?: string;
+  assistant?: LycusAssistantIdentity;
   conversationId: string;
   text: string;
   replyId?: string;
@@ -118,14 +130,29 @@ export type ClawChannelOutboundMessage = {
   channelData?: Record<string, unknown>;
 };
 
+export type ClawChannelOutboundIndicatorType =
+  | "typing"
+  | "typing_stopped"
+  | "working"
+  | "tool_start"
+  | "tool_finish"
+  | "partial_reply"
+  | "final_reply"
+  | "error";
+
 export type ClawChannelOutboundIndicator = {
   accountId: string;
   machineId?: string;
+  assistant?: LycusAssistantIdentity;
   conversationId: string;
-  type: "typing" | "typing_stopped" | "error";
+  type: ClawChannelOutboundIndicatorType;
   messageId?: string;
+  replyId?: string;
   threadId?: string | number | null;
   text?: string;
+  toolName?: string;
+  stage?: string;
+  payload?: unknown;
   channelData?: Record<string, unknown>;
 };
 

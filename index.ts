@@ -42,18 +42,18 @@ export default defineChannelPluginEntry({
   id: CHANNEL_ID,
   name: CHANNEL_LABEL,
   description:
-    "Channel plugin that connects OpenClaw to the Claw Channel backend.",
+    "Channel plugin that connects OpenClaw to Lycus.",
   plugin: clawChannelPlugin,
   registerCliMetadata(api: EntryApi) {
     api.registerCli(
       ({ program, config, logger }) => {
         const root = program
           .command(CHANNEL_ID)
-          .description("Claw Channel management");
+          .description("Lycus channel management");
 
         root
           .command("pair")
-          .description("Pair this OpenClaw gateway with the Claw Channel backend")
+          .description("Pair this OpenClaw gateway with Lycus")
           .option("-a, --account <id>", "channel account id", DEFAULT_ACCOUNT_ID)
           .option("--machine-token <token>", "override configured machine token")
           .action(async (opts: { account?: string; machineToken?: string }) => {
@@ -71,7 +71,7 @@ export default defineChannelPluginEntry({
         descriptors: [
           {
             name: CHANNEL_ID,
-            description: "Claw Channel management",
+            description: "Lycus channel management",
             hasSubcommands: true,
           },
         ],

@@ -2,7 +2,10 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/channel-core";
 
 import {
   CHANNEL_ID,
+  LEGACY_CHANNEL_ID,
   DEFAULT_ACCOUNT_ID,
+  DEFAULT_ASSISTANT_NAME,
+  DEFAULT_BASE_URL,
   DEFAULT_HEALTH_PATH,
   DEFAULT_INBOUND_PATH,
   DEFAULT_INDICATORS_PATH,
@@ -15,6 +18,11 @@ import {
   ENV_MACHINE_TOKEN,
   ENV_SOCKET_URL,
   ENV_WEBHOOK_SECRET,
+  LEGACY_ENV_BASE_URL,
+  LEGACY_ENV_MACHINE_ID,
+  LEGACY_ENV_MACHINE_TOKEN,
+  LEGACY_ENV_SOCKET_URL,
+  LEGACY_ENV_WEBHOOK_SECRET,
 } from "./constants.js";
 import type {
   ClawChannelAccount,
@@ -45,6 +53,9 @@ export const clawChannelConfigSchema = {
       machineToken: { type: "string" },
       machineId: { type: "string" },
       machineName: { type: "string" },
+      assistantName: { type: "string" },
+      assistantEmoji: { type: "string" },
+      assistantAvatarUrl: { type: "string" },
       gatewayPublicUrl: { type: "string" },
       inboundPath: { type: "string" },
       webhookSecret: { type: "string" },
@@ -82,11 +93,11 @@ export const clawChannelConfigSchema = {
   uiHints: {
     baseUrl: {
       label: "Backend URL",
-      placeholder: "https://claw-management.example.com",
+      placeholder: DEFAULT_BASE_URL,
     },
     socketUrl: {
       label: "Action Cable URL",
-      placeholder: "wss://claw-management.example.com/cable",
+      placeholder: "wss://app.lycus.ai/cable",
     },
     machineToken: {
       label: "Machine token",
@@ -116,11 +127,17 @@ export function resolveClawChannelAccount(
   const merged = { ...topLevel, ...rawAccount };
 
   const env = process.env;
-  const baseUrl = normalizeBaseUrl(merged.baseUrl ?? env[ENV_BASE_URL]);
-  const socketUrl = normalizeSocketUrl(merged.socketUrl ?? env[ENV_SOCKET_URL], baseUrl);
-  const machineToken = merged.machineToken ?? env[ENV_MACHINE_TOKEN];
-  const machineId = merged.machineId ?? env[ENV_MACHINE_ID];
-  const webhookSecret = merged.webhookSecret ?? env[ENV_WEBHOOK_SECRET];
+  const baseUrl = normalizeBaseUrl(
+    merged.baseUrl ?? env[ENV_BASE_URL] ?? env[LEGACY_ENV_BASE_URL] ?? DEFAULT_BASE_URL,
+  );
+  const socketUrl = normalizeSocketUrl(
+    merged.socketUrl ?? env[ENV_SOCKET_URL] ?? env[LEGACY_ENV_SOCKET_URL],
+    baseUrl,
+  );
+  const machineToken = merged.machineToken ?? env[ENV_MACHINE_TOKEN] ?? env[LEGACY_ENV_MACHINE_TOKEN];
+  const machineId = merged.machineId ?? env[ENV_MACHINE_ID] ?? env[LEGACY_ENV_MACHINE_ID];
+  const webhookSecret = merged.webhookSecret ?? env[ENV_WEBHOOK_SECRET] ?? env[LEGACY_ENV_WEBHOOK_SECRET];
+  const assistantName = merged.assistantName?.trim() || DEFAULT_ASSISTANT_NAME;
 
   return {
     accountId: resolvedAccountId,
@@ -131,6 +148,13 @@ export function resolveClawChannelAccount(
     machineToken,
     machineId,
     machineName: merged.machineName,
+    assistantEmoji: merged.assistantEmoji,
+    assistantAvatarUrl: merged.assistantAvatarUrl,
+    assistant: {
+      name: assistantName,
+      emoji: merged.assistantEmoji,
+      avatarUrl: merged.assistantAvatarUrl,
+    },
     gatewayPublicUrl: normalizeBaseUrl(merged.gatewayPublicUrl),
     inboundPath: normalizePath(merged.inboundPath, DEFAULT_INBOUND_PATH),
     webhookSecret,
@@ -193,6 +217,9 @@ export function upsertAccountConfig(
   assignString(input, target, "machineToken");
   assignString(input, target, "machineId");
   assignString(input, target, "machineName");
+  assignString(input, target, "assistantName");
+  assignString(input, target, "assistantEmoji");
+  assignString(input, target, "assistantAvatarUrl");
   assignString(input, target, "gatewayPublicUrl");
   assignString(input, target, "inboundPath");
   assignString(input, target, "webhookSecret");
@@ -211,20 +238,15 @@ export function upsertAccountConfig(
 }
 
 export function validateAccountInput(input: Record<string, unknown>): string | null {
-  const baseUrl = readSetupString(input, "baseUrl");
   const machineToken = readSetupString(input, "machineToken");
   const machineId = readSetupString(input, "machineId");
 
-  if (!baseUrl && !process.env[ENV_BASE_URL]) {
-    return "Claw Channel backend URL is required.";
+  if (!machineToken && !process.env[ENV_MACHINE_TOKEN] && !process.env[LEGACY_ENV_MACHINE_TOKEN]) {
+    return "Lycus machine token is required.";
   }
 
-  if (!machineToken && !process.env[ENV_MACHINE_TOKEN]) {
-    return "Claw Channel machine token is required.";
-  }
-
-  if (!machineId && !process.env[ENV_MACHINE_ID]) {
-    return "Claw Channel machine id is required.";
+  if (!machineId && !process.env[ENV_MACHINE_ID] && !process.env[LEGACY_ENV_MACHINE_ID]) {
+    return "Lycus machine id is required.";
   }
 
   return null;
@@ -248,7 +270,7 @@ export function readSetupString(
 
 function getSection(cfg: OpenClawConfig): ClawChannelConfigSection {
   const channels = (cfg as ConfigWithChannels).channels ?? {};
-  const raw = channels[CHANNEL_ID];
+  const raw = channels[CHANNEL_ID] ?? channels[LEGACY_CHANNEL_ID];
   return raw && typeof raw === "object" ? (raw as ClawChannelConfigSection) : {};
 }
 

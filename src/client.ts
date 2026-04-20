@@ -6,6 +6,7 @@ import type {
   ClawChannelPairResponse,
   ClawChannelPullResponse,
 } from "./types.js";
+import { CHANNEL_ID } from "./constants.js";
 
 type RequestOptions = {
   method?: string;
@@ -23,10 +24,11 @@ export async function pairMachine(
     method: "POST",
     path: account.api.pairPath,
     body: {
-      channelId: "claw-channel",
+      channelId: CHANNEL_ID,
       accountId: account.accountId,
       machineId: account.machineId,
       machineName: account.machineName,
+      assistant: account.assistant,
       capabilities: {
         chatTypes: ["direct", "group"],
         markdown: true,
@@ -146,7 +148,7 @@ async function backendRequest<T = unknown>(
       headers: {
         authorization: `Bearer ${account.machineToken}`,
         "content-type": "application/json",
-        "x-openclaw-channel": "claw-channel",
+        "x-openlycus": CHANNEL_ID,
         "x-openclaw-account-id": account.accountId,
         ...(account.machineId
           ? { "x-openclaw-machine-id": account.machineId }
@@ -182,15 +184,15 @@ async function backendRequest<T = unknown>(
 
 function ensureConfigured(account: ClawChannelAccount) {
   if (!account.baseUrl) {
-    throw new Error("claw-channel: backend baseUrl is required");
+    throw new Error("lycus: backend baseUrl is required");
   }
 
   if (!account.machineToken) {
-    throw new Error("claw-channel: machineToken is required");
+    throw new Error("lycus: machineToken is required");
   }
 
   if (!account.machineId) {
-    throw new Error("claw-channel: machineId is required");
+    throw new Error("lycus: machineId is required");
   }
 }
 

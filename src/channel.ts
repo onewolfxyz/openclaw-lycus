@@ -64,10 +64,10 @@ export const clawChannelPlugin = {
     id: CHANNEL_ID,
     label: CHANNEL_LABEL,
     selectionLabel: CHANNEL_LABEL,
-    detailLabel: "Claw Channel Backend",
+    detailLabel: "Lycus Backend",
     blurb:
-      "Connect OpenClaw to the Claw Channel backend through a paired machine token.",
-    aliases: ["claw", "clawchannel"],
+      "Connect OpenClaw to Lycus through a paired machine token.",
+    aliases: ["lycus", "lycusai"],
     markdownCapable: true,
     quickstartAllowFrom: true,
     showConfigured: true,
@@ -84,10 +84,10 @@ export const clawChannelPlugin = {
     resolveAccount: resolveClawChannelAccount,
     inspectAccount: inspectClawChannelAccount,
     isEnabled: (account: ClawChannelAccount) => account.enabled,
-    disabledReason: () => "Claw Channel account is disabled.",
+    disabledReason: () => "Lycus account is disabled.",
     isConfigured: isClawChannelConfigured,
     unconfiguredReason: () =>
-      "Configure channels.claw-channel.baseUrl and channels.claw-channel.machineToken.",
+      "Configure channels.lycus.baseUrl, channels.lycus.machineToken, and channels.lycus.machineId.",
     resolveAllowFrom: ({ cfg, accountId }: { cfg: OpenClawConfig; accountId?: string | null }) =>
       resolveClawChannelAccount(cfg, accountId).allowFrom,
     resolveDefaultTo: ({ cfg, accountId }: { cfg: OpenClawConfig; accountId?: string | null }) =>
@@ -131,7 +131,7 @@ export const clawChannelPlugin = {
     }),
   },
   pairing: {
-    idLabel: "Claw Channel sender id",
+    idLabel: "Lycus sender id",
     normalizeAllowEntry: (entry: string) => entry.trim().toLowerCase(),
     notifyApproval: async ({
       cfg,
@@ -147,7 +147,8 @@ export const clawChannelPlugin = {
         accountId: account.accountId,
         machineId: account.machineId,
         conversationId: id,
-        text: "Your OpenClaw pairing request was approved.",
+        text: "Your Lycus pairing request was approved.",
+        assistant: account.assistant,
       });
     },
   },
@@ -163,6 +164,7 @@ export const clawChannelPlugin = {
       const result = await sendBackendMessage(account, {
         accountId: account.accountId,
         machineId: account.machineId,
+        assistant: account.assistant,
         conversationId: ctx.to,
         text: ctx.text,
         threadId: ctx.threadId,
@@ -176,6 +178,7 @@ export const clawChannelPlugin = {
       const result = await sendBackendMessage(account, {
         accountId: account.accountId,
         machineId: account.machineId,
+        assistant: account.assistant,
         conversationId: ctx.to,
         text: ctx.text,
         mediaUrl: ctx.mediaUrl,
@@ -191,6 +194,7 @@ export const clawChannelPlugin = {
       const result = await sendBackendMessage(account, {
         accountId: account.accountId,
         machineId: account.machineId,
+        assistant: account.assistant,
         conversationId: ctx.to,
         text,
         threadId: ctx.threadId,
