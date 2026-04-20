@@ -73,6 +73,9 @@ export class ClawChannelWebSocketSession {
         : ({ socketUrl: account.socketUrl, machineId: account.machineId } as ClawChannelPairResponse);
 
       this.socketUrl = paired.socketUrl ?? account.socketUrl;
+      log?.info?.(
+        `${CHANNEL_LABEL}: paired machine account=${paired.accountId} machine=${paired.machineId}`,
+      );
 
       if (!this.socketUrl) {
         throw new Error("pair response did not include socketUrl");
@@ -95,6 +98,9 @@ export class ClawChannelWebSocketSession {
 
       ws.on("open", () => {
         this.reconnectAttempt = 0;
+        log?.info?.(
+          `${CHANNEL_LABEL}: WebSocket opened machine=${paired.machineId ?? account.machineId}`,
+        );
         this.setRuntimeStatus({
           running: true,
           connected: false,
@@ -157,8 +163,14 @@ export class ClawChannelWebSocketSession {
     if (!frame || typeof frame !== "object") return;
 
     const type = readString(frame, "type");
-    if (type === "welcome") return this.subscribe();
+    if (type === "welcome") {
+      this.options.log?.info?.(`${CHANNEL_LABEL}: Action Cable welcome received`);
+      return this.subscribe();
+    }
     if (type === "confirm_subscription") {
+      this.options.log?.info?.(
+        `${CHANNEL_LABEL}: Action Cable subscription confirmed channel=OpenclawMachineChannel`,
+      );
       this.setRuntimeStatus({
         running: true,
         connected: true,
@@ -167,16 +179,34 @@ export class ClawChannelWebSocketSession {
       await this.pullReplayEvents();
       return;
     }
-    if (type === "ping") return this.sendCableAction("ping", {});
+    if (type === "ping") {
+      this.options.log?.debug?.(`${CHANNEL_LABEL}: Action Cable ping received`);
+      return this.sendCableAction("ping", {});
+    }
     if (type === "reject_subscription") {
       throw new Error("Action Cable subscription was rejected");
     }
 
     const message = readMessagePayload(frame);
-    if (message) this.enqueueEvent(message);
+    if (message) {
+      this.options.log?.info?.(
+        `${CHANNEL_LABEL}: received event eventId=${message.eventId ?? "missing"} messageId=${
+          message.messageId ?? message.id ?? "missing"
+        } conversation=${message.conversationId ?? "missing"} text="${previewText(
+          message.text ?? message.body,
+        )}"`,
+      );
+      this.enqueueEvent(message);
+      return;
+    }
+
+    this.options.log?.debug?.(`${CHANNEL_LABEL}: ignored non-message Action Cable frame`);
   }
 
   private subscribe() {
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: subscribing to Action Cable channel=OpenclawMachineChannel`,
+    );
     this.send({
       command: "subscribe",
       identifier: ACTION_CABLE_IDENTIFIER,
@@ -184,7 +214,15 @@ export class ClawChannelWebSocketSession {
   }
 
   private async pullReplayEvents() {
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: pulling replay events afterCursor=${this.pullCursor ?? "null"}`,
+    );
     const response = await pullBackendEvents(this.options.account, this.pullCursor, 50);
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: replay pull returned count=${response.events.length} cursor=${
+        response.cursor ?? "null"
+      }`,
+    );
     for (const event of response.events) {
       this.enqueueEvent(event);
     }
@@ -194,10 +232,16 @@ export class ClawChannelWebSocketSession {
   private enqueueEvent(event: ClawChannelBackendMessage) {
     const eventId = event.eventId;
     if (eventId && (this.inFlightEventIds.has(eventId) || this.processedEventIds.has(eventId))) {
+      this.options.log?.info?.(`${CHANNEL_LABEL}: skipped duplicate event eventId=${eventId}`);
       return;
     }
 
     if (eventId) this.inFlightEventIds.add(eventId);
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: queued event eventId=${eventId ?? "missing"} messageId=${
+        event.messageId ?? event.id ?? "missing"
+      }`,
+    );
 
     this.processing = this.processing
       .then(() => this.processEvent(event))
@@ -209,10 +253,19 @@ export class ClawChannelWebSocketSession {
   private async processEvent(event: ClawChannelBackendMessage) {
     const eventId = event.eventId;
 
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: dispatching event to OpenClaw eventId=${eventId ?? "missing"} messageId=${
+        event.messageId ?? event.id ?? "missing"
+      } conversation=${event.conversationId ?? "missing"}`,
+    );
     await dispatchInboundEvent(this.options.api, this.options.account, event);
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: OpenClaw dispatch finished eventId=${eventId ?? "missing"}`,
+    );
 
     if (eventId) {
       await ackBackendEvent(this.options.account, eventId, "processed");
+      this.options.log?.info?.(`${CHANNEL_LABEL}: acked event eventId=${eventId} status=processed`);
       this.processedEventIds.add(eventId);
       this.pullCursor = eventId;
       trimSet(this.processedEventIds, 500);
@@ -236,6 +289,9 @@ export class ClawChannelWebSocketSession {
     if (this.stopped || this.reconnectTimer) return;
     const delayMs = Math.min(30_000, 1_000 * 2 ** this.reconnectAttempt);
     this.reconnectAttempt += 1;
+    this.options.log?.info?.(
+      `${CHANNEL_LABEL}: scheduling WebSocket reconnect delayMs=${delayMs}`,
+    );
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = undefined;
       void this.connect();
@@ -297,4 +353,10 @@ function trimSet<T>(set: Set<T>, maxSize: number) {
     if (first === undefined) return;
     set.delete(first);
   }
+}
+
+function previewText(text: string | undefined): string {
+  if (!text) return "";
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized;
 }

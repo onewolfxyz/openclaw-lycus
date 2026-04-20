@@ -98,6 +98,11 @@ export async function dispatchInboundEvent(
   event: ClawChannelInboundEvent,
 ) {
   if ("type" in event && event.type === "batch") {
+    api.logger.info(
+      `${CHANNEL_ID}: dispatching batch account=${event.accountId ?? defaultAccount.accountId} count=${
+        event.events.length
+      }`,
+    );
     for (const child of event.events) {
       const childAccount = resolveClawChannelAccount(
         api.config,
@@ -109,11 +114,19 @@ export async function dispatchInboundEvent(
   }
 
   if (isIndicatorEvent(event)) {
-    api.logger.debug?.(`${CHANNEL_ID}: indicator received (${event.type})`);
+    api.logger.info(`${CHANNEL_ID}: indicator received type=${event.type}`);
     return;
   }
 
-  await dispatchMessage(api, defaultAccount, normalizeMessage(event));
+  const message = normalizeMessage(event);
+  api.logger.info(
+    `${CHANNEL_ID}: inbound message normalized eventId=${message.eventId ?? "missing"} messageId=${
+      message.messageId
+    } conversation=${message.conversationId} sender=${message.senderId} text="${previewText(
+      message.text,
+    )}"`,
+  );
+  await dispatchMessage(api, defaultAccount, message);
 }
 
 async function dispatchMessage(
@@ -155,6 +168,10 @@ async function dispatchMessage(
   const ctx =
     replyRuntime.finalizeInboundContext?.(rawContext) ?? rawContext;
 
+  api.logger.info(
+    `${CHANNEL_ID}: handing message to OpenClaw runtime messageId=${message.messageId} conversation=${message.conversationId}`,
+  );
+
   await replyRuntime.dispatchReplyWithBufferedBlockDispatcher({
     ctx,
     cfg: api.config,
@@ -162,6 +179,13 @@ async function dispatchMessage(
       deliver: async (payload: unknown, info: { kind?: string } = {}) => {
         const text = extractReplyText(payload);
         if (!text) return;
+        const replyId = buildReplyId(account.machineId, message, text, info.kind);
+
+        api.logger.info(
+          `${CHANNEL_ID}: dispatching assistant reply replyId=${replyId} conversation=${
+            message.conversationId
+          } replyTo=${message.messageId} kind=${info.kind ?? "final"} text="${previewText(text)}"`,
+        );
 
         await sendBackendMessage(account, {
           accountId: account.accountId,
@@ -170,12 +194,18 @@ async function dispatchMessage(
           text,
           threadId: message.threadId,
           replyToId: message.messageId,
-          replyId: buildReplyId(account.machineId, message, text, info.kind),
+          replyId,
           kind: info.kind,
           payload,
         });
+        api.logger.info(`${CHANNEL_ID}: assistant reply sent replyId=${replyId}`);
       },
       onError: async (error: unknown) => {
+        api.logger.error(
+          `${CHANNEL_ID}: OpenClaw runtime error messageId=${message.messageId}: ${errorMessage(
+            error,
+          )}`,
+        );
         await sendBackendIndicator(account, {
           accountId: account.accountId,
           machineId: account.machineId,
@@ -187,6 +217,9 @@ async function dispatchMessage(
       },
       typingCallbacks: {
         pulse: async () => {
+          api.logger.debug?.(
+            `${CHANNEL_ID}: typing indicator conversation=${message.conversationId}`,
+          );
           await sendBackendIndicator(account, {
             accountId: account.accountId,
             machineId: account.machineId,
@@ -196,6 +229,9 @@ async function dispatchMessage(
           });
         },
         stop: async () => {
+          api.logger.debug?.(
+            `${CHANNEL_ID}: typing_stopped indicator conversation=${message.conversationId}`,
+          );
           await sendBackendIndicator(account, {
             accountId: account.accountId,
             machineId: account.machineId,
@@ -210,6 +246,9 @@ async function dispatchMessage(
       disableBlockStreaming: !account.blockStreaming,
     },
   });
+  api.logger.info(
+    `${CHANNEL_ID}: OpenClaw runtime completed messageId=${message.messageId} conversation=${message.conversationId}`,
+  );
 }
 
 type RequiredNormalizedMessage = {
@@ -341,4 +380,10 @@ function extractReplyText(payload: unknown): string {
     if (typeof text === "string") return text;
   }
   return "";
+}
+
+function previewText(text: string | undefined): string {
+  if (!text) return "";
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized;
 }
