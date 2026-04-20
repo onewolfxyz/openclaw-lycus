@@ -11,9 +11,11 @@ export {
 } from "./src/config.js";
 export type {
   ClawChannelAccount,
+  ClawChannelAckStatus,
   ClawChannelBackendMessage,
   ClawChannelBackendIndicator,
   ClawChannelInboundEvent,
   ClawChannelOutboundMessage,
   ClawChannelPairResponse,
+  ClawChannelPullResponse,
 } from "./src/types.js";

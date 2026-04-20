@@ -1,10 +1,10 @@
 import { defineChannelPluginEntry } from "openclaw/plugin-sdk/channel-core";
 
-import { clawChannelPlugin } from "./src/channel.js";
+import { clawChannelPlugin, registerRuntimeApi } from "./src/channel.js";
 import { pairMachine } from "./src/client.js";
 import { CHANNEL_ID, CHANNEL_LABEL, DEFAULT_ACCOUNT_ID } from "./src/constants.js";
 import { resolveClawChannelAccount } from "./src/config.js";
-import { registerInboundRoute } from "./src/inbound.js";
+import type { RuntimeApi } from "./src/inbound.js";
 
 type CliProgram = {
   command: (name: string) => CliCommand;
@@ -78,7 +78,7 @@ export default defineChannelPluginEntry({
       },
     );
   },
-  registerFull(api: Parameters<typeof registerInboundRoute>[0]) {
-    registerInboundRoute(api);
+  registerFull(api: RuntimeApi) {
+    registerRuntimeApi(api);
   },
 });

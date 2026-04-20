@@ -1,8 +1,10 @@
 import type {
   ClawChannelAccount,
+  ClawChannelAckStatus,
   ClawChannelOutboundIndicator,
   ClawChannelOutboundMessage,
   ClawChannelPairResponse,
+  ClawChannelPullResponse,
 } from "./types.js";
 
 type RequestOptions = {
@@ -25,11 +27,6 @@ export async function pairMachine(
       accountId: account.accountId,
       machineId: account.machineId,
       machineName: account.machineName,
-      gatewayPublicUrl: account.gatewayPublicUrl,
-      inboundPath: account.inboundPath,
-      inboundUrl: account.gatewayPublicUrl
-        ? `${account.gatewayPublicUrl}${account.inboundPath}`
-        : undefined,
       capabilities: {
         chatTypes: ["direct", "group"],
         markdown: true,
@@ -42,7 +39,8 @@ export async function pairMachine(
     ok: response.ok ?? true,
     paired: response.paired ?? true,
     accountId: response.accountId ?? account.accountId,
-    machineId: response.machineId ?? account.machineId,
+    machineId: response.machineId ?? account.machineId!,
+    socketUrl: response.socketUrl ?? account.socketUrl,
     message: response.message,
   };
 }
@@ -69,6 +67,44 @@ export async function sendBackendIndicator(
     path: account.api.indicatorsPath,
     body: indicator,
   });
+}
+
+export async function ackBackendEvent(
+  account: ClawChannelAccount,
+  eventId: string,
+  status: ClawChannelAckStatus = "processed",
+): Promise<void> {
+  ensureConfigured(account);
+  await backendRequest(account, {
+    method: "POST",
+    path: account.api.ackPath,
+    body: {
+      eventId,
+      status,
+    },
+  });
+}
+
+export async function pullBackendEvents(
+  account: ClawChannelAccount,
+  afterCursor?: string | null,
+  limit = 50,
+): Promise<ClawChannelPullResponse> {
+  ensureConfigured(account);
+  const response = await backendRequest<ClawChannelPullResponse>(account, {
+    method: "POST",
+    path: account.api.pullPath,
+    body: {
+      afterCursor: afterCursor ?? null,
+      limit,
+    },
+  });
+
+  return {
+    ok: response.ok ?? true,
+    cursor: response.cursor ?? null,
+    events: response.events ?? [],
+  };
 }
 
 export async function probeBackend(account: ClawChannelAccount): Promise<{
@@ -151,6 +187,10 @@ function ensureConfigured(account: ClawChannelAccount) {
 
   if (!account.machineToken) {
     throw new Error("claw-channel: machineToken is required");
+  }
+
+  if (!account.machineId) {
+    throw new Error("claw-channel: machineId is required");
   }
 }
 

@@ -8,9 +8,12 @@ import {
   DEFAULT_INDICATORS_PATH,
   DEFAULT_MESSAGES_PATH,
   DEFAULT_PAIR_PATH,
+  DEFAULT_ACK_PATH,
+  DEFAULT_PULL_PATH,
   ENV_BASE_URL,
   ENV_MACHINE_ID,
   ENV_MACHINE_TOKEN,
+  ENV_SOCKET_URL,
   ENV_WEBHOOK_SECRET,
 } from "./constants.js";
 import type {
@@ -18,6 +21,7 @@ import type {
   ClawChannelAccountConfig,
   ClawChannelConfigSection,
   ClawChannelDmPolicy,
+  ClawChannelMode,
 } from "./types.js";
 
 type ConfigWithChannels = OpenClawConfig & {
@@ -32,7 +36,12 @@ export const clawChannelConfigSchema = {
     additionalProperties: false,
     properties: {
       enabled: { type: "boolean" },
+      mode: {
+        type: "string",
+        enum: ["websocket", "webhook"],
+      },
       baseUrl: { type: "string" },
+      socketUrl: { type: "string" },
       machineToken: { type: "string" },
       machineId: { type: "string" },
       machineName: { type: "string" },
@@ -57,6 +66,8 @@ export const clawChannelConfigSchema = {
           pairPath: { type: "string" },
           messagesPath: { type: "string" },
           indicatorsPath: { type: "string" },
+          ackPath: { type: "string" },
+          pullPath: { type: "string" },
           healthPath: { type: "string" },
         },
       },
@@ -71,7 +82,11 @@ export const clawChannelConfigSchema = {
   uiHints: {
     baseUrl: {
       label: "Backend URL",
-      placeholder: "https://app.example.com",
+      placeholder: "https://claw-management.example.com",
+    },
+    socketUrl: {
+      label: "Action Cable URL",
+      placeholder: "wss://claw-management.example.com/cable",
     },
     machineToken: {
       label: "Machine token",
@@ -102,6 +117,7 @@ export function resolveClawChannelAccount(
 
   const env = process.env;
   const baseUrl = normalizeBaseUrl(merged.baseUrl ?? env[ENV_BASE_URL]);
+  const socketUrl = normalizeSocketUrl(merged.socketUrl ?? env[ENV_SOCKET_URL], baseUrl);
   const machineToken = merged.machineToken ?? env[ENV_MACHINE_TOKEN];
   const machineId = merged.machineId ?? env[ENV_MACHINE_ID];
   const webhookSecret = merged.webhookSecret ?? env[ENV_WEBHOOK_SECRET];
@@ -109,7 +125,9 @@ export function resolveClawChannelAccount(
   return {
     accountId: resolvedAccountId,
     enabled: merged.enabled ?? true,
+    mode: normalizeMode(merged.mode),
     baseUrl,
+    socketUrl,
     machineToken,
     machineId,
     machineName: merged.machineName,
@@ -128,6 +146,8 @@ export function resolveClawChannelAccount(
         merged.api?.indicatorsPath,
         DEFAULT_INDICATORS_PATH,
       ),
+      ackPath: normalizePath(merged.api?.ackPath, DEFAULT_ACK_PATH),
+      pullPath: normalizePath(merged.api?.pullPath, DEFAULT_PULL_PATH),
       healthPath: normalizePath(merged.api?.healthPath, DEFAULT_HEALTH_PATH),
     },
   };
@@ -145,12 +165,14 @@ export function inspectClawChannelAccount(
     accountId: account.accountId,
     baseUrl: account.baseUrl ? "configured" : "missing",
     machineTokenStatus: account.machineToken ? "available" : "missing",
+    machineIdStatus: account.machineId ? "available" : "missing",
+    socketUrl: account.socketUrl ? "configured" : "derived",
     webhookSecretStatus: account.webhookSecret ? "available" : "missing",
   };
 }
 
 export function isClawChannelConfigured(account: ClawChannelAccount): boolean {
-  return Boolean(account.baseUrl && account.machineToken);
+  return Boolean(account.baseUrl && account.machineToken && account.machineId);
 }
 
 export function upsertAccountConfig(
@@ -167,6 +189,7 @@ export function upsertAccountConfig(
       : ((section.accounts ??= {})[accountId] ??= {});
 
   assignString(input, target, "baseUrl");
+  assignString(input, target, "socketUrl");
   assignString(input, target, "machineToken");
   assignString(input, target, "machineId");
   assignString(input, target, "machineName");
@@ -174,6 +197,7 @@ export function upsertAccountConfig(
   assignString(input, target, "inboundPath");
   assignString(input, target, "webhookSecret");
   assignString(input, target, "defaultTo");
+  assignString(input, target, "mode");
   assignString(input, target, "dmPolicy");
   assignStringArray(input, target, "allowFrom");
   assignBoolean(input, target, "enabled");
@@ -181,6 +205,7 @@ export function upsertAccountConfig(
   assignBoolean(input, target, "blockStreaming");
 
   target.enabled ??= true;
+  target.mode ??= "websocket";
   target.dmPolicy ??= "pairing";
   return next as OpenClawConfig;
 }
@@ -188,6 +213,7 @@ export function upsertAccountConfig(
 export function validateAccountInput(input: Record<string, unknown>): string | null {
   const baseUrl = readSetupString(input, "baseUrl");
   const machineToken = readSetupString(input, "machineToken");
+  const machineId = readSetupString(input, "machineId");
 
   if (!baseUrl && !process.env[ENV_BASE_URL]) {
     return "Claw Channel backend URL is required.";
@@ -195,6 +221,10 @@ export function validateAccountInput(input: Record<string, unknown>): string | n
 
   if (!machineToken && !process.env[ENV_MACHINE_TOKEN]) {
     return "Claw Channel machine token is required.";
+  }
+
+  if (!machineId && !process.env[ENV_MACHINE_ID]) {
+    return "Claw Channel machine id is required.";
   }
 
   return null;
@@ -244,6 +274,21 @@ function normalizeBaseUrl(value?: string): string | undefined {
   return value.trim().replace(/\/+$/, "");
 }
 
+function normalizeSocketUrl(
+  value: string | undefined,
+  baseUrl: string | undefined,
+): string | undefined {
+  if (value?.trim()) return value.trim();
+  if (!baseUrl) return undefined;
+
+  const url = new URL(baseUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/cable";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
 function normalizePath(value: string | undefined, fallback: string): string {
   const path = value?.trim() || fallback;
   return path.startsWith("/") ? path : `/${path}`;
@@ -260,6 +305,10 @@ function normalizeDmPolicy(value?: string): ClawChannelDmPolicy {
   }
 
   return "pairing";
+}
+
+function normalizeMode(value?: string): ClawChannelMode {
+  return value === "webhook" ? "webhook" : "websocket";
 }
 
 function normalizeStringArray(value: unknown): string[] {

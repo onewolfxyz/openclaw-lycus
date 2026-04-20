@@ -1,16 +1,21 @@
 export type ClawChannelDmPolicy = "pairing" | "allowlist" | "open" | "disabled";
 export type ClawChannelChatType = "direct" | "group";
+export type ClawChannelMode = "websocket" | "webhook";
 
 export type ClawChannelApiPaths = {
   pairPath?: string;
   messagesPath?: string;
   indicatorsPath?: string;
+  ackPath?: string;
+  pullPath?: string;
   healthPath?: string;
 };
 
 export type ClawChannelAccountConfig = {
   enabled?: boolean;
+  mode?: ClawChannelMode;
   baseUrl?: string;
+  socketUrl?: string;
   machineToken?: string;
   machineId?: string;
   machineName?: string;
@@ -38,11 +43,13 @@ export type ClawChannelAccount = Required<
     | "allowFrom"
     | "pairOnStart"
     | "blockStreaming"
+    | "mode"
   >
 > &
   Pick<
     ClawChannelAccountConfig,
     | "baseUrl"
+    | "socketUrl"
     | "machineToken"
     | "machineId"
     | "machineName"
@@ -56,6 +63,7 @@ export type ClawChannelAccount = Required<
 
 export type ClawChannelBackendMessage = {
   type?: "message";
+  eventId?: string;
   id?: string;
   messageId?: string;
   conversationId?: string;
@@ -100,6 +108,7 @@ export type ClawChannelOutboundMessage = {
   machineId?: string;
   conversationId: string;
   text: string;
+  replyId?: string;
   messageId?: string;
   threadId?: string | number | null;
   replyToId?: string | null;
@@ -123,7 +132,16 @@ export type ClawChannelOutboundIndicator = {
 export type ClawChannelPairResponse = {
   ok: boolean;
   accountId: string;
-  machineId?: string;
+  machineId: string;
   paired?: boolean;
+  socketUrl?: string;
   message?: string;
+};
+
+export type ClawChannelAckStatus = "received" | "processed";
+
+export type ClawChannelPullResponse = {
+  ok: boolean;
+  cursor?: string | null;
+  events: ClawChannelBackendMessage[];
 };

@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createHash } from "node:crypto";
 
 import { sendBackendIndicator, sendBackendMessage } from "./client.js";
 import { CHANNEL_ID } from "./constants.js";
@@ -19,7 +20,7 @@ import type {
   ClawChannelInboundEvent,
 } from "./types.js";
 
-type OpenClawPluginApi = {
+export type OpenClawPluginApi = {
   config: Record<string, unknown>;
   logger: {
     debug?: (message: string) => void;
@@ -39,7 +40,7 @@ type RuntimeReply = {
   dispatchReplyWithBufferedBlockDispatcher?: (params: Record<string, unknown>) => Promise<void>;
 };
 
-type RuntimeApi = OpenClawPluginApi & {
+export type RuntimeApi = OpenClawPluginApi & {
   runtime?: {
     channel?: {
       reply?: RuntimeReply;
@@ -91,7 +92,7 @@ async function handleInboundHttp(
   }
 }
 
-async function dispatchInboundEvent(
+export async function dispatchInboundEvent(
   api: RuntimeApi,
   defaultAccount: ClawChannelAccount,
   event: ClawChannelInboundEvent,
@@ -169,6 +170,7 @@ async function dispatchMessage(
           text,
           threadId: message.threadId,
           replyToId: message.messageId,
+          replyId: buildReplyId(account.machineId, message, text, info.kind),
           kind: info.kind,
           payload,
         });
@@ -211,6 +213,7 @@ async function dispatchMessage(
 }
 
 type RequiredNormalizedMessage = {
+  eventId?: string;
   messageId: string;
   conversationId: string;
   from: string;
@@ -241,6 +244,7 @@ function normalizeMessage(message: ClawChannelBackendMessage): RequiredNormalize
   }
 
   return {
+    eventId: message.eventId,
     messageId: message.messageId ?? message.id ?? `${Date.now()}:${senderId}`,
     conversationId,
     from: message.from ?? senderId,
@@ -255,6 +259,23 @@ function normalizeMessage(message: ClawChannelBackendMessage): RequiredNormalize
     conversationLabel: message.conversationLabel,
     channelData: message.channelData,
   };
+}
+
+function buildReplyId(
+  machineId: string | undefined,
+  message: RequiredNormalizedMessage,
+  text: string,
+  kind?: string,
+): string {
+  const stable = [
+    machineId ?? "",
+    message.conversationId,
+    message.messageId,
+    kind ?? "final",
+    text,
+  ].join("|");
+
+  return `rep_${createHash("sha256").update(stable).digest("hex").slice(0, 32)}`;
 }
 
 function isIndicatorEvent(

@@ -14,6 +14,7 @@ describe("claw-channel config", () => {
         "claw-channel": {
           baseUrl: "https://backend.example.com/",
           machineToken: "machine-token",
+          machineId: "machine-default",
           allowFrom: ["user-1"],
         },
       },
@@ -24,6 +25,9 @@ describe("claw-channel config", () => {
     expect(account.accountId).toBe(DEFAULT_ACCOUNT_ID);
     expect(account.baseUrl).toBe("https://backend.example.com");
     expect(account.machineToken).toBe("machine-token");
+    expect(account.machineId).toBe("machine-default");
+    expect(account.mode).toBe("websocket");
+    expect(account.socketUrl).toBe("wss://backend.example.com/cable");
     expect(account.allowFrom).toEqual(["user-1"]);
     expect(account.inboundPath).toBe(DEFAULT_INBOUND_PATH);
   });
@@ -34,6 +38,7 @@ describe("claw-channel config", () => {
         "claw-channel": {
           baseUrl: "https://backend.example.com",
           machineToken: "top-token",
+          machineId: "top-machine",
           accounts: {
             west: {
               machineToken: "west-token",

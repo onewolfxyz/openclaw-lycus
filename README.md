@@ -1,23 +1,21 @@
 # Claw Channel OpenClaw Plugin
 
-This package is a native OpenClaw channel plugin. It lets a user install one OpenClaw channel, authenticate with your backend using a machine token, and pair that local OpenClaw gateway to a backend-managed machine/channel.
+This package is a native OpenClaw channel plugin for the Claw Management Rails backend.
 
-## What It Does
+Bold idea: customer machines should never need public inbound URLs.
 
-Bold idea: OpenClaw stays channel-native, while your backend stays the system of record.
+Clear articulation: the plugin runs inside the local OpenClaw Gateway, pairs with Rails using a machine token, opens an outbound Action Cable WebSocket to Rails, receives durable queued events over that socket, dispatches them into OpenClaw, ACKs processed events, and posts assistant replies back to Rails over HTTP.
 
-Clear articulation: the plugin registers a `claw-channel` channel with OpenClaw, exposes an inbound webhook on the OpenClaw Gateway, sends assistant replies back to your backend, and pairs the machine token during channel login or gateway startup.
+Real-world example: a browser user sends a message in your Rails chat UI. Rails stores an `openclaw_channel_events` row, broadcasts that event to the paired machine over `/cable`, the plugin runs the OpenClaw agent locally, and Rails receives the assistant reply at `/api/openclaw/channel/messages`.
 
-Real-world example: your app sends a user message to `POST /claw-channel/webhook` on the user's OpenClaw Gateway. OpenClaw runs the agent. The plugin posts the assistant reply back to your backend at `/api/openclaw/channel/messages`.
-
-Confident close: backend-owned auth and OpenClaw-owned agent routing stay cleanly separated.
+Confident close: Rails owns durable state; Action Cable is only the delivery pipe.
 
 ## Install
 
 For local development:
 
 ```bash
-openclaw plugins install -l /path/to/openclaw-claw-channel
+openclaw plugins install -l /Users/eng1/Documents/ClawChannelPlugin
 openclaw plugins enable claw-channel
 openclaw gateway restart
 ```
@@ -32,33 +30,50 @@ openclaw gateway restart
 
 ## Configuration
 
-Add this to `openclaw.json`:
+Use Raw config mode if OpenClaw's form renderer reports an unsupported type.
 
 ```jsonc
 {
   "channels": {
     "claw-channel": {
       "enabled": true,
-      "baseUrl": "https://your-backend.example.com",
-      "machineToken": "machine-token-from-your-service",
-      "machineId": "optional-stable-machine-id",
-      "gatewayPublicUrl": "https://public-url-for-this-openclaw-gateway.example.com",
-      "webhookSecret": "shared-hmac-secret",
-      "dmPolicy": "pairing",
-      "allowFrom": [],
-      "pairOnStart": true
+      "mode": "websocket",
+      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
+      "socketUrl": "wss://unmercerized-biramous-larry.ngrok-free.dev/cable",
+      "machineToken": "machine-token-from-rails-pairing-ticket",
+      "machineId": "suggested-machine-id-from-rails",
+      "machineName": "Engineering 2",
+      "pairOnStart": true,
+      "dmPolicy": "open",
+      "allowFrom": ["*"]
     }
   }
 }
 ```
 
+Minimum required fields:
+
+```jsonc
+{
+  "channels": {
+    "claw-channel": {
+      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
+      "machineToken": "machine-token-from-rails-pairing-ticket",
+      "machineId": "suggested-machine-id-from-rails"
+    }
+  }
+}
+```
+
+If `socketUrl` is omitted, the plugin derives it from `baseUrl` as `/cable`.
+
 Environment fallbacks are supported:
 
 ```bash
-CLAW_CHANNEL_BASE_URL=https://your-backend.example.com
-CLAW_CHANNEL_MACHINE_TOKEN=machine-token-from-your-service
-CLAW_CHANNEL_MACHINE_ID=optional-stable-machine-id
-CLAW_CHANNEL_WEBHOOK_SECRET=shared-hmac-secret
+CLAW_CHANNEL_BASE_URL=https://unmercerized-biramous-larry.ngrok-free.dev
+CLAW_CHANNEL_SOCKET_URL=wss://unmercerized-biramous-larry.ngrok-free.dev/cable
+CLAW_CHANNEL_MACHINE_TOKEN=machine-token-from-rails-pairing-ticket
+CLAW_CHANNEL_MACHINE_ID=suggested-machine-id-from-rails
 ```
 
 Named accounts are also supported:
@@ -67,7 +82,7 @@ Named accounts are also supported:
 {
   "channels": {
     "claw-channel": {
-      "baseUrl": "https://your-backend.example.com",
+      "baseUrl": "https://unmercerized-biramous-larry.ngrok-free.dev",
       "accounts": {
         "default": {
           "machineToken": "machine-token-a",
@@ -85,49 +100,40 @@ Named accounts are also supported:
 
 ## Pairing
 
+The Rails app creates a pairing ticket:
+
+```http
+POST /api/pairing_tickets
+```
+
+The user copies the returned `token` into OpenClaw as `machineToken` and the returned `suggested_machine_id` into OpenClaw as `machineId`.
+
 Pair explicitly:
 
 ```bash
-openclaw channels login --channel claw-channel
-```
-
-Or use the plugin CLI:
-
-```bash
 openclaw claw-channel pair
-openclaw claw-channel pair --account office
 ```
 
-The plugin also pairs on gateway startup by default when `pairOnStart` is not `false`.
+Or let the plugin pair on Gateway startup with `pairOnStart: true`.
 
-## Backend Contract
-
-The backend URL defaults below can be overridden with `channels.claw-channel.api.*`.
-
-### Pair Machine
-
-`POST /api/openclaw/channel/pair`
-
-Headers:
+The plugin calls:
 
 ```http
+POST /api/openclaw/channel/pair
 Authorization: Bearer <machineToken>
 X-OpenClaw-Channel: claw-channel
 X-OpenClaw-Account-Id: default
-X-OpenClaw-Machine-Id: machine-a
+X-OpenClaw-Machine-Id: <machineId>
 ```
 
-Body:
+Request:
 
 ```json
 {
   "channelId": "claw-channel",
   "accountId": "default",
-  "machineId": "machine-a",
-  "machineName": "optional display name",
-  "gatewayPublicUrl": "https://gateway.example.com",
-  "inboundPath": "/claw-channel/webhook",
-  "inboundUrl": "https://gateway.example.com/claw-channel/webhook",
+  "machineId": "claw-mac-447f",
+  "machineName": "Engineering 2",
   "capabilities": {
     "chatTypes": ["direct", "group"],
     "markdown": true,
@@ -143,114 +149,179 @@ Expected response:
   "ok": true,
   "paired": true,
   "accountId": "default",
-  "machineId": "machine-a"
+  "machineId": "claw-mac-447f",
+  "socketUrl": "wss://unmercerized-biramous-larry.ngrok-free.dev/cable"
 }
 ```
 
-### Send OpenClaw Replies To Backend
+## WebSocket Contract
 
-`POST /api/openclaw/channel/messages`
+After pairing, the plugin opens:
+
+```text
+wss://unmercerized-biramous-larry.ngrok-free.dev/cable?machine_id=<machineId>
+```
+
+Headers:
+
+```http
+Authorization: Bearer <machineToken>
+Origin: https://unmercerized-biramous-larry.ngrok-free.dev
+X-OpenClaw-Channel: claw-channel
+X-OpenClaw-Account-Id: default
+X-OpenClaw-Machine-Id: <machineId>
+```
+
+The WebSocket client uses the Action Cable subprotocol:
+
+```text
+actioncable-v1-json
+```
+
+After Action Cable sends `welcome`, the plugin subscribes:
+
+```json
+{
+  "command": "subscribe",
+  "identifier": "{\"channel\":\"OpenclawMachineChannel\"}"
+}
+```
+
+Rails broadcasts machine events as Action Cable messages:
+
+```json
+{
+  "identifier": "{\"channel\":\"OpenclawMachineChannel\"}",
+  "message": {
+    "type": "message",
+    "eventId": "evt_8f2c1d0b",
+    "messageId": "msg_456",
+    "conversationId": "user_123",
+    "accountId": "default",
+    "text": "Can you help me?",
+    "chatType": "direct",
+    "from": "user_123",
+    "senderId": "user_123",
+    "senderName": "Jane",
+    "threadId": null,
+    "timestamp": "2026-04-20T12:00:00.000Z"
+  }
+}
+```
+
+The plugin queues events in memory, avoids duplicate in-flight `eventId`s, dispatches each event into OpenClaw, then ACKs it after processing.
+
+## Plugin HTTP Endpoints
+
+### Assistant Replies
+
+```http
+POST /api/openclaw/channel/messages
+Authorization: Bearer <machineToken>
+```
 
 Body:
 
 ```json
 {
   "accountId": "default",
-  "machineId": "machine-a",
-  "conversationId": "user-or-conversation-id",
+  "machineId": "claw-mac-447f",
+  "conversationId": "user_123",
   "text": "Assistant reply",
-  "threadId": null,
-  "replyToId": "backend-message-id",
+  "replyToId": "msg_456",
+  "replyId": "rep_789",
   "kind": "final"
 }
 ```
 
-Expected response:
+### Indicators
 
-```json
-{
-  "messageId": "backend-reply-id"
-}
+```http
+POST /api/openclaw/channel/indicators
+Authorization: Bearer <machineToken>
 ```
 
-### Send Indicators To Backend
+Types sent by the plugin:
 
-`POST /api/openclaw/channel/indicators`
+```text
+typing
+typing_stopped
+error
+```
+
+### ACK Processed Event
+
+```http
+POST /api/openclaw/channel/events/ack
+Authorization: Bearer <machineToken>
+```
 
 Body:
 
 ```json
 {
-  "accountId": "default",
-  "machineId": "machine-a",
-  "conversationId": "user-or-conversation-id",
-  "type": "typing",
-  "threadId": null
+  "eventId": "evt_8f2c1d0b",
+  "status": "processed"
 }
 ```
 
-Indicator types currently sent by the plugin are `typing`, `typing_stopped`, and `error`.
+### Pull Replay Events
 
-### Receive Messages From Backend
-
-The plugin registers:
-
-`POST /claw-channel/webhook`
-
-Authenticate inbound calls with either:
+The plugin calls this after Action Cable subscription confirms and may call it after reconnect.
 
 ```http
+POST /api/openclaw/channel/events/pull
 Authorization: Bearer <machineToken>
 ```
 
-or:
-
-```http
-X-Claw-Signature: sha256=<hmac_sha256_raw_body_with_webhookSecret>
-```
-
-Message body:
+Body:
 
 ```json
 {
-  "type": "message",
-  "accountId": "default",
-  "messageId": "backend-message-id",
-  "conversationId": "user-or-conversation-id",
-  "from": "user-id",
-  "senderId": "user-id",
-  "senderName": "User Name",
-  "text": "Hello OpenClaw",
-  "chatType": "direct",
-  "threadId": null,
-  "timestamp": "2026-04-19T12:00:00.000Z"
+  "afterCursor": null,
+  "limit": 50
 }
 ```
 
-Batch body:
+Response:
 
 ```json
 {
-  "type": "batch",
-  "accountId": "default",
+  "ok": true,
+  "cursor": "evt_8f2c1d0b",
   "events": [
     {
       "type": "message",
-      "messageId": "msg-1",
-      "conversationId": "user-1",
-      "senderId": "user-1",
-      "text": "Hello"
+      "eventId": "evt_8f2c1d0b",
+      "messageId": "msg_456",
+      "conversationId": "user_123",
+      "accountId": "default",
+      "text": "Can you help me?",
+      "chatType": "direct",
+      "from": "user_123",
+      "senderId": "user_123",
+      "senderName": "Jane",
+      "threadId": null,
+      "timestamp": "2026-04-20T12:00:00.000Z"
     }
   ]
 }
 ```
 
-The route responds `202` after authentication and dispatches the OpenClaw turn asynchronously so your backend does not wait for the model response.
+## Runtime Behavior
+
+- WebSocket mode is the default.
+- `gatewayPublicUrl` is no longer required.
+- `/claw-channel/webhook` is only registered if `mode` is explicitly set to `webhook`.
+- The plugin reconnects with exponential backoff up to 30 seconds.
+- On subscription confirm, the plugin pulls replay events from Rails.
+- ACKs are sent over HTTP after OpenClaw processing.
+- Assistant replies include a deterministic `replyId`.
 
 ## Development
 
 ```bash
-npm install
+npm install --legacy-peer-deps
 npm run typecheck
 npm test
 ```
@@ -262,4 +333,5 @@ The plugin follows the current OpenClaw SDK channel pattern:
 - `index.ts` exports `defineChannelPluginEntry(...)`
 - `setup-entry.ts` exports `defineSetupPluginEntry(...)`
 - `src/channel.ts` owns channel config, pairing, outbound, auth, status, and gateway startup
-- `src/inbound.ts` owns the plugin-managed webhook and OpenClaw reply dispatch
+- `src/websocket.ts` owns Action Cable connection, replay pull, event queueing, ACK, and reconnect
+- `src/inbound.ts` owns OpenClaw event dispatch and legacy webhook mode
