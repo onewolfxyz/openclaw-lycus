@@ -1,0 +1,116 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish npm and ClawHub
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Read package metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          package_description="$(node -p "require('./package.json').description")"
+
+          echo "name=${package_name}" >> "$GITHUB_OUTPUT"
+          echo "version=${package_version}" >> "$GITHUB_OUTPUT"
+          echo "description=${package_description}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${package_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Check npm version
+        id: npm_check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npm view "${{ steps.meta.outputs.name }}@${{ steps.meta.outputs.version }}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.meta.outputs.name }}@${{ steps.meta.outputs.version }} already exists on npm."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.meta.outputs.name }}@${{ steps.meta.outputs.version }} is not published on npm yet."
+          fi
+
+      - name: Publish npm package
+        if: steps.npm_check.outputs.published == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      - name: Install ClawHub CLI
+        run: npm install -g clawhub@0.9.0
+
+      - name: Check ClawHub version
+        id: clawhub_check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if clawhub package inspect "${{ steps.meta.outputs.name }}" --no-input > /tmp/clawhub-inspect.txt 2>&1; then
+            cat /tmp/clawhub-inspect.txt
+            if grep -q "Latest: ${{ steps.meta.outputs.version }}" /tmp/clawhub-inspect.txt; then
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              echo "${{ steps.meta.outputs.name }}@${{ steps.meta.outputs.version }} is already latest on ClawHub."
+            else
+              echo "published=false" >> "$GITHUB_OUTPUT"
+              echo "${{ steps.meta.outputs.name }} exists on ClawHub, but latest is not ${{ steps.meta.outputs.version }}."
+            fi
+          else
+            cat /tmp/clawhub-inspect.txt
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.meta.outputs.name }} is not published on ClawHub yet."
+          fi
+
+      - name: Publish ClawHub package
+        if: steps.clawhub_check.outputs.published == 'false'
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          clawhub login --token "$CLAWHUB_TOKEN" --no-browser
+          clawhub package publish . \
+            --family code-plugin \
+            --name "${{ steps.meta.outputs.name }}" \
+            --display-name "Lycus" \
+            --version "${{ steps.meta.outputs.version }}" \
+            --changelog "Publish ${{ steps.meta.outputs.name }} ${{ steps.meta.outputs.version }} from main. Lycus connects OpenClaw devices to a centralized dashboard for team access, structured activity, scheduled work, and organizational outcomes across multiple installations." \
+            --tags latest,openclaw,channel,lycus \
+            --source-repo "${{ github.repository }}" \
+            --source-commit "${{ github.sha }}" \
+            --source-ref "main"
