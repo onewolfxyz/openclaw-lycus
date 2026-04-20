@@ -104,6 +104,21 @@ openclaw gateway restart
 openclaw lycus pair
 ```
 
+## Automated Publishing
+
+The GitHub Actions workflow at `.github/workflows/publish.yml` publishes from `main`.
+
+Required repository secrets:
+
+- `NPM_TOKEN`: npm granular access token with publish access to `@onewolfxyz/openclaw-lycus` and 2FA bypass enabled.
+- `CLAWHUB_TOKEN`: ClawHub API token created with `clawhub login` / ClawHub account settings.
+
+Release rule:
+
+- Update `package.json` version before merging to `main`.
+- When `main` updates, the workflow runs tests, checks whether that version already exists on npm, publishes it if needed, checks ClawHub, and publishes the matching ClawHub package if needed.
+- If the package version already exists on npm, npm publish is skipped because npm versions are immutable.
+
 ## Configuration
 
 Use Raw config mode if OpenClaw's form renderer reports an unsupported type.
