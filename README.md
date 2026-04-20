@@ -1,6 +1,6 @@
 # Lycus OpenClaw Plugin
 
-This package is a native OpenClaw channel plugin for [Lycus](https://lycus.ai).
+This package is a native OpenClaw channel plugin for [Lycus](https://www.lycus.ai).
 
 Bold idea: Lycus is the business layer for OpenClaw.
 
@@ -143,7 +143,7 @@ Example full `channels` block for the current staging backend:
       "machineName": "Test Macbook Engineering",
       "assistantName": "Lycus Assistant",
       "assistantEmoji": "L",
-      "assistantAvatarUrl": "https://lycus.ai/avatar.png",
+      "assistantAvatarUrl": "https://www.lycus.ai/avatar.png",
       "pairOnStart": true,
       "dmPolicy": "open",
       "allowFrom": ["*"]
