@@ -1,7 +1,7 @@
 {
   "id": "lycus",
   "name": "Lycus",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Lycus connects OpenClaw devices to a centralized dashboard for team access, structured activity, scheduled work, and organizational outcomes.",
   "kind": "channel",
   "legacyPluginIds": [

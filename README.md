@@ -14,10 +14,7 @@ Confident close: Lycus gives organizations one operational layer for agents runn
 
 - OpenClaw Gateway is already installed and working.
 - Node 22.14+ is available on the machine running OpenClaw.
-- The Rails backend is reachable over HTTPS/WSS.
-- Rails has created a pairing ticket and returned:
-  - `token`, used as `machineToken`
-  - `suggested_machine_id`, used as `machineId`
+- You have a Lycus account at [https://app.lycus.ai](https://app.lycus.ai) with a machine added — the dashboard gives you a **machine token** and a **machine id**.
 
 Check Node:
 
@@ -25,28 +22,50 @@ Check Node:
 node --version
 ```
 
-## First-Time Install
+## Quick Start (Recommended)
 
-The current development install uses a local path plugin. In these examples, the plugin lives at:
+Install from npm and run the setup wizard:
+
+```bash
+openclaw plugins install @onewolfxyz/openclaw-lycus
+openclaw plugins enable lycus
+openclaw channels add --channel lycus
+openclaw gateway restart
+```
+
+The wizard will prompt you to paste:
+
+1. Your **Lycus machine token** (from [https://app.lycus.ai](https://app.lycus.ai))
+2. Your **Lycus machine id** (same page)
+3. An optional **machine name**
+
+After you confirm, the plugin pairs the machine with Lycus automatically. If it reports `paired <machineId> with https://app.lycus.ai`, you are connected.
+
+Watch logs:
+
+```bash
+openclaw logs --follow --local-time
+```
+
+## Local Development Install
+
+The local path install is useful while iterating on the plugin. In these examples, the plugin lives at:
 
 ```text
 /Users/eng1/Documents/openclaw-lycus
 ```
 
-Install dependencies:
+Install dependencies and run the wizard:
 
 ```bash
 cd /Users/eng1/Documents/openclaw-lycus
 npm install --legacy-peer-deps
 npm run typecheck
 npm test
-```
-
-Install the plugin into OpenClaw from the local path:
-
-```bash
 openclaw plugins install -l /Users/eng1/Documents/openclaw-lycus
 openclaw plugins enable lycus
+openclaw channels add --channel lycus
+openclaw gateway restart
 ```
 
 Confirm OpenClaw sees it:
@@ -54,24 +73,6 @@ Confirm OpenClaw sees it:
 ```bash
 openclaw plugins list
 openclaw plugins inspect lycus
-```
-
-Restart the Gateway so the plugin is loaded:
-
-```bash
-openclaw gateway restart
-```
-
-Pair the machine:
-
-```bash
-openclaw lycus pair
-```
-
-Watch logs:
-
-```bash
-openclaw logs --follow --local-time
 ```
 
 Expected startup flow:
@@ -84,24 +85,13 @@ Lycus: Action Cable subscription confirmed channel=OpenclawMachineChannel
 Lycus: pulling replay events afterCursor=null
 ```
 
-## Published Install
-
-After publishing to npm:
-
-```bash
-openclaw plugins install @onewolfxyz/openclaw-lycus
-openclaw plugins enable lycus
-openclaw gateway restart
-openclaw lycus pair
-```
-
-If installing from ClawHub:
+## Install From ClawHub
 
 ```bash
 openclaw plugins install clawhub:@onewolfxyz/openclaw-lycus
 openclaw plugins enable lycus
+openclaw channels add --channel lycus
 openclaw gateway restart
-openclaw lycus pair
 ```
 
 ## Automated Publishing
@@ -120,6 +110,8 @@ Release rule:
 - If the package version already exists on npm, npm publish is skipped because npm versions are immutable.
 
 ## Configuration
+
+Most users should use `openclaw channels add --channel lycus` — it prompts for the machine token and machine id, persists them, and pairs with Lycus. The sections below document the underlying config shape if you need to edit `openclaw.json` directly or run multiple named accounts.
 
 Use Raw config mode if OpenClaw's form renderer reports an unsupported type.
 
@@ -216,30 +208,17 @@ Named accounts are also supported:
 
 ## Pairing
 
-The Rails app creates a pairing ticket:
+Lycus creates a machine for you at [https://app.lycus.ai](https://app.lycus.ai). Each machine has its own **machine token** and **machine id** — both are shown on the machine's settings page.
 
-```http
-POST /api/pairing_tickets
-```
-
-The user copies the returned `token` into OpenClaw as `machineToken` and the returned `suggested_machine_id` into OpenClaw as `machineId`.
-
-Pair explicitly:
-
-```bash
-openclaw lycus pair
-```
-
-Or let the plugin pair on Gateway startup with `pairOnStart: true`.
+The setup wizard (`openclaw channels add --channel lycus`) collects both values and triggers pairing at the end. The plugin also re-pairs automatically on Gateway startup when `pairOnStart: true`.
 
 Re-pair after changing `machineToken`, `machineId`, `baseUrl`, or `socketUrl`:
 
 ```bash
 openclaw gateway restart
-openclaw lycus pair
 ```
 
-The plugin calls:
+Under the hood, the plugin calls:
 
 ```http
 POST /api/openclaw/channel/pair
@@ -496,7 +475,7 @@ Then verify:
 
 ```bash
 openclaw plugins inspect lycus
-openclaw lycus pair
+openclaw channels status lycus
 openclaw logs --follow --local-time
 ```
 
@@ -510,10 +489,9 @@ npm run typecheck
 npm test
 openclaw plugins install -l /Users/eng1/Documents/openclaw-lycus
 openclaw gateway restart
-openclaw lycus pair
 ```
 
-Do not change the Rails pairing token unless you intend to create a new machine pairing.
+Do not change the Lycus machine token unless you intend to create a new machine pairing.
 
 ## Updating OpenClaw Config
 
@@ -524,10 +502,10 @@ openclaw config validate
 openclaw gateway restart
 ```
 
-If the change touches channel identity or backend URLs, pair again:
+If the change touches channel identity or backend URLs, re-run the wizard to re-pair:
 
 ```bash
-openclaw lycus pair
+openclaw channels add --channel lycus
 ```
 
 Use Raw config mode if the OpenClaw Control UI says:
