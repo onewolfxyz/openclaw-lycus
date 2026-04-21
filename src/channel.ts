@@ -14,6 +14,7 @@ import {
   validateAccountInput,
 } from "./config.js";
 import { registerInboundRoute, type RuntimeApi } from "./inbound.js";
+import { clawChannelSetupWizard } from "./setup-wizard.js";
 import type { ClawChannelAccount } from "./types.js";
 import { ClawChannelWebSocketSession } from "./websocket.js";
 
@@ -124,6 +125,7 @@ export const clawChannelPlugin = {
       input: Record<string, unknown>;
     }) => validateAccountInput(input),
   },
+  setupWizard: clawChannelSetupWizard,
   security: {
     resolveDmPolicy: ({ account }: { account: ClawChannelAccount }) => ({
       policy: account.dmPolicy,
