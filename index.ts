@@ -1,4 +1,4 @@
-import { defineChannelPluginEntry } from "openclaw/plugin-sdk/channel-core";
+import { defineChannelPluginEntry } from "openclaw/plugin-sdk/core";
 
 import { clawChannelPlugin, registerRuntimeApi } from "./src/channel.js";
 import { CHANNEL_ID, CHANNEL_LABEL } from "./src/constants.js";

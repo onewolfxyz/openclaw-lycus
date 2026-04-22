@@ -1,4 +1,4 @@
-declare module "openclaw/plugin-sdk/channel-core" {
+declare module "openclaw/plugin-sdk/core" {
   export type OpenClawConfig = Record<string, any>;
 
   export function defineChannelPluginEntry(entry: any): any;

@@ -1,4 +1,4 @@
-import { defineSetupPluginEntry } from "openclaw/plugin-sdk/channel-core";
+import { defineSetupPluginEntry } from "openclaw/plugin-sdk/core";
 
 import { clawChannelPlugin } from "./src/channel.js";
 
