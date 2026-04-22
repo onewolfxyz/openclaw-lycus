@@ -1,6 +1,6 @@
 {
   "name": "@onewolfxyz/openclaw-lycus",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Lycus is the business layer for OpenClaw, connecting devices to a centralized dashboard for team access, activity visibility, scheduled work, and organizational outcomes.",
   "type": "module",
   "main": "./index.ts",

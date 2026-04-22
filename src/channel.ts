@@ -1,6 +1,6 @@
 import type {
   OpenClawConfig,
-} from "openclaw/plugin-sdk/channel-core";
+} from "openclaw/plugin-sdk/core";
 
 import { pairMachine, probeBackend, sendBackendMessage } from "./client.js";
 import { CHANNEL_ID, CHANNEL_LABEL, DEFAULT_ACCOUNT_ID } from "./constants.js";
