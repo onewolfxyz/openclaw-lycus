@@ -40,6 +40,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Build
+        run: npm run build
+
       - name: Read package metadata
         id: meta
         shell: bash
